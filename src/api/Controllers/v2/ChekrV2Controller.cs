@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Primitives;
 
-namespace api_v1.Controllers
+namespace api.Controllers.v2
 {
     public class ApiKey
     {
@@ -80,45 +80,46 @@ namespace api_v1.Controllers
     }
 
     [ApiController]
-    [Route("[controller]")]
-    public class CheckrController : ControllerBase
+    [Route("v2/chekr")]
+    public class ChekrV2Controller : ControllerBase
     {
-        private readonly ILogger<CheckrController> _logger;
+        private readonly ILogger<ChekrV2Controller> _logger;
 
-        public CheckrController(ILogger<CheckrController> logger)
+        public ChekrV2Controller(ILogger<ChekrV2Controller> logger)
         {
             _logger = logger;
 
-            LoadApiKeys().GetAwaiter().GetResult();
+            LoadApiKeysAsync().GetAwaiter().GetResult();
         }
 
-        private static readonly Dictionary<string, ApiKey> ApiKeys = new Dictionary<string, ApiKey>
-        {
-            {"asdf", new ApiKey(1, "adsf", 10)}
-            , {"qwer", new ApiKey(2, "qwer", 100)}
-            , {"zxcv", new ApiKey(3, "zxcv", 5)}
-        };
-
-        private List<ApiKey> _apiKeys;
+       
+        private Dictionary<string, ApiKey> _apiKeys;
 
         private Dictionary<string, DomainEntry> _domains
         {
-            get { return GetDomains().GetAwaiter().GetResult(); }
+            get { return GetDomainsAsync().GetAwaiter().GetResult(); }
         }
 
-        private static readonly Dictionary<string, DomainEntry> Domains = new Dictionary<string, DomainEntry>
-        {
-            {"yahoo.com", new DomainEntry(1, "yahoo.com", new DateTime(2020, 11, 6, 0, 0, 5), ThreatVector.None)}
-            , {"twitter.com", new DomainEntry(2, "twitter.com", new DateTime(2020, 11, 4, 0, 2, 12), ThreatVector.None)}
-            , {"microsoft.com", new DomainEntry(3, "microsoft.com", new DateTime(2020, 11, 16, 0, 5, 12), ThreatVector.None)}
-            , {"phishme.net", new DomainEntry(4, "phishme.net", new DateTime(2020, 11, 6, 1, 5, 29), ThreatVector.Spam)}
-            , {"clickjack.net", new DomainEntry(5, "clickjack.net", new DateTime(2020, 11, 6, 0, 17, 58), ThreatVector.Ransomware)}
-            , {"mlwarebites.com", new DomainEntry(6, "mlwarebites.com", new DateTime(2020, 11, 1, 0, 17, 58), ThreatVector.Malware)}
-        };
+        //private static readonly Dictionary<string, ApiKey> ApiKeys = new Dictionary<string, ApiKey>
+        //{
+        //    {"asdf", new ApiKey(1, "adsf", 10)}
+        //    , {"qwer", new ApiKey(2, "qwer", 100)}
+        //    , {"zxcv", new ApiKey(3, "zxcv", 5)}
+        //};
+
+        //private static readonly Dictionary<string, DomainEntry> Domains = new Dictionary<string, DomainEntry>
+        //{
+        //    {"yahoo.com", new DomainEntry(1, "yahoo.com", new DateTime(2020, 11, 6, 0, 0, 5), ThreatVector.None)}
+        //    , {"twitter.com", new DomainEntry(2, "twitter.com", new DateTime(2020, 11, 4, 0, 2, 12), ThreatVector.None)}
+        //    , {"microsoft.com", new DomainEntry(3, "microsoft.com", new DateTime(2020, 11, 16, 0, 5, 12), ThreatVector.None)}
+        //    , {"phishme.net", new DomainEntry(4, "phishme.net", new DateTime(2020, 11, 6, 1, 5, 29), ThreatVector.Spam)}
+        //    , {"clickjack.net", new DomainEntry(5, "clickjack.net", new DateTime(2020, 11, 6, 0, 17, 58), ThreatVector.Ransomware)}
+        //    , {"mlwarebites.com", new DomainEntry(6, "mlwarebites.com", new DateTime(2020, 11, 1, 0, 17, 58), ThreatVector.Malware)}
+        //};
 
         private static Dictionary<string, List<WebCall>> RateLimiter = new Dictionary<string, List<WebCall>>();
 
-        private async Task LoadApiKeys()
+        private async Task LoadApiKeysAsync()
         {
             using var sql = new SqliteConnection("Data Source=data.db");
             await sql.OpenAsync();
@@ -129,7 +130,7 @@ namespace api_v1.Controllers
 
             using var reader = await cmd.ExecuteReaderAsync();
 
-            var results = new List<ApiKey>();
+            var results = new Dictionary<string, ApiKey>();
 
             int idOrdinal = reader.GetOrdinal("Id");
             int nameOrdinal = reader.GetOrdinal("ApiKeyName");
@@ -142,13 +143,13 @@ namespace api_v1.Controllers
                 int limit = reader.GetInt32(limitOrdinal);
 
                 var key = new ApiKey(id, name, limit);
-                results.Add(key);
+                results.Add(name, key);
             }
 
             _apiKeys = results;
         }
         
-        private async Task<Dictionary<string,DomainEntry>> GetDomains()
+        private async Task<Dictionary<string,DomainEntry>> GetDomainsAsync()
         {
             using var sql = new SqliteConnection("Data Source=data.db");
             await sql.OpenAsync();
@@ -185,6 +186,16 @@ namespace api_v1.Controllers
         [HttpGet("upload")]
         public async Task<IActionResult> UploadAsync()
         {
+            Dictionary<string, DomainEntry> domains = new Dictionary<string, DomainEntry>
+            {
+                {"yahoo.com", new DomainEntry(1, "yahoo.com", new DateTime(2020, 11, 6, 0, 0, 5), ThreatVector.None)}
+                , {"twitter.com", new DomainEntry(2, "twitter.com", new DateTime(2020, 11, 4, 0, 2, 12), ThreatVector.None)}
+                , {"microsoft.com", new DomainEntry(3, "microsoft.com", new DateTime(2020, 11, 16, 0, 5, 12), ThreatVector.None)}
+                , {"phishme.net", new DomainEntry(4, "phishme.net", new DateTime(2020, 11, 6, 1, 5, 29), ThreatVector.Spam)}
+                , {"clickjack.net", new DomainEntry(5, "clickjack.net", new DateTime(2020, 11, 6, 0, 17, 58), ThreatVector.Ransomware)}
+                , {"mlwarebites.com", new DomainEntry(6, "mlwarebites.com", new DateTime(2020, 11, 1, 0, 17, 58), ThreatVector.Malware)}
+            };
+
             using var sql = new SqliteConnection("Data Source=data.db");
             await sql.OpenAsync();
 
@@ -195,7 +206,7 @@ namespace api_v1.Controllers
             using var cmd = sql.CreateCommand();
             cmd.CommandText = "insert into cfgDomains (Id,DomainName,LastScannedDate,ThreatVector) values (@1,@2,@3,@4)";
 
-            foreach (var (_, value) in Domains)
+            foreach (var (_, value) in domains)
             {
                 cmd.Parameters.Clear();
                 cmd.Parameters.AddWithValue("@1", value.Id);
@@ -217,7 +228,7 @@ namespace api_v1.Controllers
             {
                 string apiKey = value.First();
 
-                bool apiKeyExists = ApiKeys.TryGetValue(apiKey, out ApiKey keydef);
+                bool apiKeyExists = _apiKeys.TryGetValue(apiKey, out ApiKey keydef);
                 if (apiKeyExists)
                 {
                     bool exists2 = RateLimiter.TryGetValue(apiKey, out List<WebCall> calls);
