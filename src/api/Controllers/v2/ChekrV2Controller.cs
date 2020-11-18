@@ -39,6 +39,16 @@ namespace api.Controllers.v2
 
         public ThreatVector ThreatVector { get; set; }
 
+        public static Dictionary<string, DomainEntry> Defaults { get; } = new Dictionary<string, DomainEntry>
+        {
+            { "yahoo.com", new DomainEntry(1, "yahoo.com", new DateTime(2020, 11, 6, 0, 0, 5), ThreatVector.None)}
+            , { "twitter.com", new DomainEntry(2, "twitter.com", new DateTime(2020, 11, 4, 0, 2, 12), ThreatVector.None)}
+            , { "microsoft.com", new DomainEntry(3, "microsoft.com", new DateTime(2020, 11, 16, 0, 5, 12), ThreatVector.None)}
+            , { "phishme.net", new DomainEntry(4, "phishme.net", new DateTime(2020, 11, 6, 1, 5, 29), ThreatVector.Spam)}
+            , { "clickjack.net", new DomainEntry(5, "clickjack.net", new DateTime(2020, 11, 6, 0, 17, 58), ThreatVector.Ransomware)}
+            , { "mlwarebites.com", new DomainEntry(6, "mlwarebites.com", new DateTime(2020, 11, 1, 0, 17, 58), ThreatVector.Malware) }
+        };
+
         public DomainEntry(int id, string domain, DateTime lastScanned, ThreatVector threatVector)
         {
             Id = id;
@@ -97,23 +107,6 @@ namespace api.Controllers.v2
             _domainChekr = domainChekr;
         }
 
-        //private static readonly Dictionary<string, ApiKey> ApiKeys = new Dictionary<string, ApiKey>
-        //{
-        //    {"asdf", new ApiKey(1, "adsf", 10)}
-        //    , {"qwer", new ApiKey(2, "qwer", 100)}
-        //    , {"zxcv", new ApiKey(3, "zxcv", 5)}
-        //};
-
-        //private static readonly Dictionary<string, DomainEntry> Domains = new Dictionary<string, DomainEntry>
-        //{
-        //    {"yahoo.com", new DomainEntry(1, "yahoo.com", new DateTime(2020, 11, 6, 0, 0, 5), ThreatVector.None)}
-        //    , {"twitter.com", new DomainEntry(2, "twitter.com", new DateTime(2020, 11, 4, 0, 2, 12), ThreatVector.None)}
-        //    , {"microsoft.com", new DomainEntry(3, "microsoft.com", new DateTime(2020, 11, 16, 0, 5, 12), ThreatVector.None)}
-        //    , {"phishme.net", new DomainEntry(4, "phishme.net", new DateTime(2020, 11, 6, 1, 5, 29), ThreatVector.Spam)}
-        //    , {"clickjack.net", new DomainEntry(5, "clickjack.net", new DateTime(2020, 11, 6, 0, 17, 58), ThreatVector.Ransomware)}
-        //    , {"mlwarebites.com", new DomainEntry(6, "mlwarebites.com", new DateTime(2020, 11, 1, 0, 17, 58), ThreatVector.Malware)}
-        //};
-        
         [HttpGet("upload")]
         public async Task<IActionResult> UploadAsync()
         {
