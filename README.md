@@ -30,7 +30,7 @@
 - Databases, file systems, FTP servers, network connections, etc.
 
 
-The constructor of an entry point is to initialize dependencies.
+The constructor of an entry point is to accept already initialized dependencies.
 The constructor of a model/POCO is to allow the creation of valid instances.
 	Or use the factory pattern to create instances.
 

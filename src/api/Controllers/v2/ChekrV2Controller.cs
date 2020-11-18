@@ -139,105 +139,6 @@ namespace api.Controllers.v2
         }
     }
 
-    public interface IRateLimit
-    {
-        bool IsCallWithinLimits(ApiKey keydef, out int callsRemaining);
-    }
-
-    public class OneMinuteRateLimit : IRateLimit
-    {
-        private readonly ITimeProvider _timeProvider;
-        private static Dictionary<string, List<WebCall>> RateLimiter = new Dictionary<string, List<WebCall>>();
-
-        public OneMinuteRateLimit(
-            ITimeProvider timeProvider
-            )
-        {
-            _timeProvider = timeProvider;
-        }
-
-        public bool IsCallWithinLimits(ApiKey keydef, out int callsRemaining)
-        {
-            var call = new WebCall(_timeProvider.UtcNow);
-
-            bool exists = RateLimiter.TryGetValue(keydef.Key, out List<WebCall> calls);
-            if (exists)
-            {
-                RateLimiter[keydef.Key].Add(call);
-            }
-            else
-            {
-                RateLimiter.Add(keydef.Key, new List<WebCall> { call });
-            }
-
-            if (calls == null)
-            {
-                calls = RateLimiter[keydef.Key];
-            }
-
-            var recent = calls.Where(x => x.When >= _timeProvider.UtcNow.AddMinutes(-1));
-            if (recent.Count() > keydef.MaxCallsWithinOneMinute)
-            {
-                callsRemaining = 0;
-                return false;
-            }
-
-            callsRemaining = keydef.MaxCallsWithinOneMinute - recent.Count();
-            return true;
-        }
-    }
-
-    public interface IApiKeyRetriever
-    {
-        bool TryGetApiKey(out string value);
-    }
-
-    public class HttpHeaderApiKeyRetriever : IApiKeyRetriever
-    {
-        private readonly IHttpContextAccessor _accessor;
-
-        public HttpHeaderApiKeyRetriever(IHttpContextAccessor accessor)
-        {
-            _accessor = accessor;
-        }
-
-        public bool TryGetApiKey(out string value)
-        {
-            bool exists = _accessor.HttpContext.Request.Headers.TryGetValue("x-chekr-api-key", out StringValues val);
-            if (exists)
-            {
-                value = val.First();
-                return true;
-            }
-
-            value = null;
-            return false;
-        }
-    }
-
-    public class ApiKeyMissingException : Exception
-    {
-        public ApiKeyMissingException(string message) : base(message)
-        {
-
-        }
-    }
-
-    public class RateLimitException : Exception
-    {
-        public RateLimitException(string message) : base(message)
-        {
-
-        }
-    }
-
-    public class DomainValidationException : Exception
-    {
-        public DomainValidationException(string message) : base(message)
-        {
-
-        }
-    }
 
     public class DomainChekr
     {
@@ -303,17 +204,14 @@ namespace api.Controllers.v2
 
                 Dictionary<string, DomainEntry> domains = await _dataAccess.GetDomainsAsync();
 
-                var response = ChekrResponseFactory.Create(keydef, _timeProvider.UtcNow, callsRemaining, bare, domains);
+                var response = CreateResponse(keydef, _timeProvider.UtcNow, callsRemaining, bare, domains);
                 return response;
             }
 
             return null;
         }
-    }
 
-    public static class ChekrResponseFactory
-    {
-        public static ChekrResponse Create(ApiKey keydef, DateTime time, int callsRemaining, string bare, Dictionary<string, DomainEntry> domains)
+        public static ChekrResponse CreateResponse(ApiKey keydef, DateTime time, int callsRemaining, string bare, Dictionary<string, DomainEntry> domains)
         {
             ChekrResponse response = null;
 
@@ -340,24 +238,24 @@ namespace api.Controllers.v2
 
                 response = new ChekrResponse
                 {
-                    CallsRemaining = callsRemaining
-                    , Domain = bare
-                    , ScanStatus = "complete"
-                    , SafetyStatus = safetyStatus
-                    , Threat = safetyStatus == "unknown" ? null : entry.ThreatVector.ToString()
-                    , PreviousThreat = safetyStatus == "unknown" ? entry.ThreatVector.ToString() : null
+                    CallsRemaining = callsRemaining,
+                    Domain = bare,
+                    ScanStatus = "complete",
+                    SafetyStatus = safetyStatus,
+                    Threat = safetyStatus == "unknown" ? null : entry.ThreatVector.ToString(),
+                    PreviousThreat = safetyStatus == "unknown" ? entry.ThreatVector.ToString() : null
                 };
             }
             else
             {
                 response = new ChekrResponse
                 {
-                    CallsRemaining = callsRemaining
-                    , Domain = bare
-                    , ScanStatus = "in-process"
-                    , SafetyStatus = "unknown"
-                    , Threat = null
-                    , PreviousThreat = null
+                    CallsRemaining = callsRemaining,
+                    Domain = bare,
+                    ScanStatus = "in-process",
+                    SafetyStatus = "unknown",
+                    Threat = null,
+                    PreviousThreat = null
                 };
             }
 
@@ -365,19 +263,32 @@ namespace api.Controllers.v2
         }
     }
 
-    public interface ITimeProvider
-    {
-        DateTime Now { get; }
 
-        DateTime UtcNow { get; }
+
+    public class ApiKeyMissingException : Exception
+    {
+        public ApiKeyMissingException(string message) : base(message)
+        {
+
+        }
     }
 
-    public class DotNetTimeProvider : ITimeProvider
+    public class RateLimitException : Exception
     {
-        public DateTime Now => DateTime.Now;
+        public RateLimitException(string message) : base(message)
+        {
 
-        public DateTime UtcNow => DateTime.UtcNow;
+        }
     }
+
+    public class DomainValidationException : Exception
+    {
+        public DomainValidationException(string message) : base(message)
+        {
+
+        }
+    }
+    
 
     public interface IDataAccess
     {
@@ -386,6 +297,97 @@ namespace api.Controllers.v2
         Task<Dictionary<string, DomainEntry>> GetDomainsAsync();
 
         Task<Dictionary<string, ApiKey>> LoadApiKeysAsync();
+    }
+
+    public interface IApiKeyRetriever
+    {
+        bool TryGetApiKey(out string value);
+    }
+
+    public interface IRateLimit
+    {
+        bool IsCallWithinLimits(ApiKey keydef, out int callsRemaining);
+    }
+
+    public interface ITimeProvider
+    {
+        DateTime Now { get; }
+
+        DateTime UtcNow { get; }
+    }
+    
+
+    public class DotNetTimeProvider : ITimeProvider
+    {
+        public DateTime Now => DateTime.Now;
+
+        public DateTime UtcNow => DateTime.UtcNow;
+    }
+
+    public class OneMinuteRateLimit : IRateLimit
+    {
+        private readonly ITimeProvider _timeProvider;
+        private static Dictionary<string, List<WebCall>> RateLimiter = new Dictionary<string, List<WebCall>>();
+
+        public OneMinuteRateLimit(
+            ITimeProvider timeProvider
+        )
+        {
+            _timeProvider = timeProvider;
+        }
+
+        public bool IsCallWithinLimits(ApiKey keydef, out int callsRemaining)
+        {
+            var call = new WebCall(_timeProvider.UtcNow);
+
+            bool exists = RateLimiter.TryGetValue(keydef.Key, out List<WebCall> calls);
+            if (exists)
+            {
+                RateLimiter[keydef.Key].Add(call);
+            }
+            else
+            {
+                RateLimiter.Add(keydef.Key, new List<WebCall> { call });
+            }
+
+            if (calls == null)
+            {
+                calls = RateLimiter[keydef.Key];
+            }
+
+            var recent = calls.Where(x => x.When >= _timeProvider.UtcNow.AddMinutes(-1));
+            if (recent.Count() > keydef.MaxCallsWithinOneMinute)
+            {
+                callsRemaining = 0;
+                return false;
+            }
+
+            callsRemaining = keydef.MaxCallsWithinOneMinute - recent.Count();
+            return true;
+        }
+    }
+
+    public class HttpHeaderApiKeyRetriever : IApiKeyRetriever
+    {
+        private readonly IHttpContextAccessor _accessor;
+
+        public HttpHeaderApiKeyRetriever(IHttpContextAccessor accessor)
+        {
+            _accessor = accessor;
+        }
+
+        public bool TryGetApiKey(out string value)
+        {
+            bool exists = _accessor.HttpContext.Request.Headers.TryGetValue("x-chekr-api-key", out StringValues val);
+            if (exists)
+            {
+                value = val.First();
+                return true;
+            }
+
+            value = null;
+            return false;
+        }
     }
 
     public class DataAccess : IDataAccess

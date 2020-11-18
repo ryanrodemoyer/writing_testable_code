@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using api.Controllers.v1;
 using api.Controllers.v2;
 using Castle.Core.Logging;
@@ -41,6 +42,27 @@ namespace tests
             TestDelegate act = () => new ChekrV2Controller(logger, chekr);
 
             Assert.DoesNotThrow(act);
+        }
+
+        [Test]
+        public async Task CallMethod()
+        {
+            var logger = A.Fake<ILogger<ChekrV2Controller>>();
+
+            var dataAccess = A.Fake<IDataAccess>();
+            var apiKeyRetriever = A.Fake<IApiKeyRetriever>();
+            var rateLimit = A.Fake<IRateLimit>();
+            var timeProvider = A.Fake<ITimeProvider>();
+
+            var chekr = new DomainChekr(
+                dataAccess
+                , apiKeyRetriever
+                , rateLimit
+                , timeProvider
+            );
+
+            var controller = new ChekrV2Controller(logger, chekr);
+            var res = await controller.GetAsync("asdf");
         }
     }
 
