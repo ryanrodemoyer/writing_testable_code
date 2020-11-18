@@ -25,9 +25,38 @@ namespace tests
         {
             var logger = A.Fake<ILogger<ChekrV2Controller>>();
 
+            var dataAccess = A.Fake<IDataAccess>();
+            var apiKeyRetriever = A.Fake<IApiKeyRetriever>();
+            var rateLimit = A.Fake<IRateLimit>();
+
+            var chekr = new DomainChekr(
+                dataAccess
+                , apiKeyRetriever
+                , rateLimit
+            );
+
             Assert.DoesNotThrow(() =>
-                new ChekrV2Controller(logger)
+                new ChekrV2Controller(logger, chekr)
                 );
+        }
+    }
+
+    public class DomainChekrTests
+    {
+        [Test]
+        public void CreateInstance()
+        {
+            var dataAccess = A.Fake<IDataAccess>();
+            var apiKeyRetriever = A.Fake<IApiKeyRetriever>();
+            var rateLimit = A.Fake<IRateLimit>();
+
+            var chekr = new DomainChekr(
+                dataAccess
+                , apiKeyRetriever
+                , rateLimit
+                );
+
+            Assert.Pass();
         }
     }
 }
