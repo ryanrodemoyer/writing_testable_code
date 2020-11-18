@@ -30,9 +30,10 @@
 - Databases, file systems, FTP servers, network connections, etc.
 
 ### OOP - Constructors
-- The constructor of an entry point is to accept already initialized dependencies.
+- The constructor of an entry point is to initialize dependencies.
 - The constructor of a model/POCO is to allow the creation of valid instances.
 	- Or use the factory pattern to create instances.
+- The constructor of everything else is to accept already initialized dependencies.
 
 
 ## Domain Chekr
