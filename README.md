@@ -49,3 +49,8 @@ Subscribers are provided with an api key that is required for all calls in to th
 Subscribers have rate limits that are tied to the api key. The rate limiter works on a rolling 60 second window. An error is returned if the calls exceed the established rate limit.
 
 Successfully validated calls then check the `domain` query param to get the input. Subscribers can send the data as the bare domain (ex. microsoft.com) or fully loaded (https://www.microsoft.com/page/something.aspx). The call is considered validated when it has a valid api key and is not rate limited.
+
+### Build Dependencies
+
+1. .NET 5
+1. Visual Studio 2019 or VS Code
