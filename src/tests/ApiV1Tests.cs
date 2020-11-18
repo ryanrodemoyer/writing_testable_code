@@ -1,3 +1,4 @@
+using System;
 using api.Controllers.v1;
 using api.Controllers.v2;
 using Castle.Core.Logging;
@@ -28,16 +29,18 @@ namespace tests
             var dataAccess = A.Fake<IDataAccess>();
             var apiKeyRetriever = A.Fake<IApiKeyRetriever>();
             var rateLimit = A.Fake<IRateLimit>();
+            var timeProvider = A.Fake<ITimeProvider>();
 
             var chekr = new DomainChekr(
                 dataAccess
                 , apiKeyRetriever
                 , rateLimit
+                , timeProvider
             );
 
-            Assert.DoesNotThrow(() =>
-                new ChekrV2Controller(logger, chekr)
-                );
+            TestDelegate act = () => new ChekrV2Controller(logger, chekr);
+
+            Assert.DoesNotThrow(act);
         }
     }
 
@@ -49,11 +52,13 @@ namespace tests
             var dataAccess = A.Fake<IDataAccess>();
             var apiKeyRetriever = A.Fake<IApiKeyRetriever>();
             var rateLimit = A.Fake<IRateLimit>();
+            var timeProvider = A.Fake<ITimeProvider>();
 
             var chekr = new DomainChekr(
                 dataAccess
                 , apiKeyRetriever
                 , rateLimit
+                , timeProvider
                 );
 
             Assert.Pass();

@@ -146,16 +146,19 @@ namespace api.Controllers.v2
 
     public class OneMinuteRateLimit : IRateLimit
     {
+        private readonly ITimeProvider _timeProvider;
         private static Dictionary<string, List<WebCall>> RateLimiter = new Dictionary<string, List<WebCall>>();
 
-        public OneMinuteRateLimit()
+        public OneMinuteRateLimit(
+            ITimeProvider timeProvider
+            )
         {
-
+            _timeProvider = timeProvider;
         }
 
         public bool IsCallWithinLimits(ApiKey keydef, out int callsRemaining)
         {
-            var call = new WebCall(DateTime.UtcNow);
+            var call = new WebCall(_timeProvider.UtcNow);
 
             bool exists = RateLimiter.TryGetValue(keydef.Key, out List<WebCall> calls);
             if (exists)
@@ -164,15 +167,15 @@ namespace api.Controllers.v2
             }
             else
             {
-                RateLimiter.Add(keydef.Key, new List<WebCall> {call});
+                RateLimiter.Add(keydef.Key, new List<WebCall> { call });
             }
 
             if (calls == null)
             {
                 calls = RateLimiter[keydef.Key];
             }
-            
-            var recent = calls.Where(x => x.When >= DateTime.UtcNow.AddMinutes(-1));
+
+            var recent = calls.Where(x => x.When >= _timeProvider.UtcNow.AddMinutes(-1));
             if (recent.Count() > keydef.MaxCallsWithinOneMinute)
             {
                 callsRemaining = 0;
@@ -216,7 +219,7 @@ namespace api.Controllers.v2
     {
         public ApiKeyMissingException(string message) : base(message)
         {
-            
+
         }
     }
 
@@ -241,12 +244,19 @@ namespace api.Controllers.v2
         private readonly IDataAccess _dataAccess;
         private readonly IApiKeyRetriever _apiKeyRetriever;
         private readonly IRateLimit _rateLimit;
+        private readonly ITimeProvider _timeProvider;
 
-        public DomainChekr(IDataAccess dataAccess, IApiKeyRetriever apiKeyRetriever, IRateLimit rateLimit)
+        public DomainChekr(
+            IDataAccess dataAccess
+            , IApiKeyRetriever apiKeyRetriever
+            , IRateLimit rateLimit
+            , ITimeProvider timeProvider
+            )
         {
             _dataAccess = dataAccess;
             _apiKeyRetriever = apiKeyRetriever;
             _rateLimit = rateLimit;
+            _timeProvider = timeProvider;
         }
 
         public static string ExtractBareDomain(string domain)
@@ -262,17 +272,8 @@ namespace api.Controllers.v2
 
         public async Task AddDomains()
         {
-            Dictionary<string, DomainEntry> domains = new Dictionary<string, DomainEntry>
-            {
-                { "yahoo.com", new DomainEntry(1, "yahoo.com", new DateTime(2020, 11, 6, 0, 0, 5), ThreatVector.None)}
-                , { "twitter.com", new DomainEntry(2, "twitter.com", new DateTime(2020, 11, 4, 0, 2, 12), ThreatVector.None)}
-                , { "microsoft.com", new DomainEntry(3, "microsoft.com", new DateTime(2020, 11, 16, 0, 5, 12), ThreatVector.None)}
-                , { "phishme.net", new DomainEntry(4, "phishme.net", new DateTime(2020, 11, 6, 1, 5, 29), ThreatVector.Spam)}
-                , { "clickjack.net", new DomainEntry(5, "clickjack.net", new DateTime(2020, 11, 6, 0, 17, 58), ThreatVector.Ransomware)}
-                , { "mlwarebites.com", new DomainEntry(6, "mlwarebites.com", new DateTime(2020, 11, 1, 0, 17, 58), ThreatVector.Malware) }
-            };
 
-            await _dataAccess.AddDomainsAsync(domains);
+            await _dataAccess.AddDomainsAsync(DomainEntry.Defaults);
         }
 
         public async Task<ChekrResponse> GetReportAsync(string domain)
@@ -302,7 +303,7 @@ namespace api.Controllers.v2
 
                 Dictionary<string, DomainEntry> domains = await _dataAccess.GetDomainsAsync();
 
-                var response = ChekrResponseFactory.Create(keydef, callsRemaining, bare, domains);
+                var response = ChekrResponseFactory.Create(keydef, _timeProvider.UtcNow, callsRemaining, bare, domains);
                 return response;
             }
 
@@ -312,7 +313,7 @@ namespace api.Controllers.v2
 
     public static class ChekrResponseFactory
     {
-        public static ChekrResponse Create(ApiKey keydef, int callsRemaining, string bare, Dictionary<string, DomainEntry> domains)
+        public static ChekrResponse Create(ApiKey keydef, DateTime time, int callsRemaining, string bare, Dictionary<string, DomainEntry> domains)
         {
             ChekrResponse response = null;
 
@@ -320,7 +321,7 @@ namespace api.Controllers.v2
             if (domainExists)
             {
                 string safetyStatus = null;
-                bool recentScan = entry.LastScanned >= DateTime.UtcNow.AddDays(-7);
+                bool recentScan = entry.LastScanned >= time.AddDays(-7);
                 if (recentScan)
                 {
                     if (entry.ThreatVector == ThreatVector.None)
@@ -362,6 +363,20 @@ namespace api.Controllers.v2
 
             return response;
         }
+    }
+
+    public interface ITimeProvider
+    {
+        DateTime Now { get; }
+
+        DateTime UtcNow { get; }
+    }
+
+    public class DotNetTimeProvider : ITimeProvider
+    {
+        public DateTime Now => DateTime.Now;
+
+        public DateTime UtcNow => DateTime.UtcNow;
     }
 
     public interface IDataAccess
