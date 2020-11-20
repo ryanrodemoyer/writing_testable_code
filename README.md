@@ -6,7 +6,7 @@
 **L**oosely couple code from entry point. \
 **S**imultaneously write code and write test. \
 **I**solate dependencies using classes and interfaces. \
-**C**onstructors are for dependency initialization.
+**C**onstructors are for declaring dependency needs.
 
 ### Testing Commandments
 1. Loosely couple your code from the entry point.
